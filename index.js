@@ -5,9 +5,19 @@ const { google } = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PATH = 'token.json';
 
+let config = null
+
+try { config = JSON.parse(fs.readFileSync('config.json')) }
+catch (error) { console.log('Error loading config file:', error) }
+
 fs.readFile('credentials.json', (err, content) => {
   if (err) return console.log('Error loading client secret file:', err);
-  authorize(JSON.parse(content), listEvents);
+  authorize(JSON.parse(content), function (auth) {
+    processEvents(auth, config.calendarId)
+    setInterval(function () {
+      processEvents(auth, config.calendarId)
+    }, config.refreshMinutes * 60 * 1000)
+  });
 });
 
 function authorize(credentials, callback) {
@@ -46,7 +56,37 @@ function getAccessToken(oAuth2Client, callback) {
   });
 }
 
-function listEvents(auth) {
+const ledOff = 0;
+const ledGreen = 1;
+const ledYellow = 2;
+const ledRed = 3;
+
+function setLed(state) {
+  switch (state) {
+    case ledGreen:
+      console.log("Led state: GREEN");
+      break;
+    case ledYellow:
+      console.log("Led state: YELLOW");
+      break;
+    case ledRed:
+      console.log("Led state: RED");
+      break;
+    default:
+      console.log("Led state: OFF");
+      break;
+  }
+}
+
+function processEvents(auth, calendarid) {
+  let now = new Date()
+  now = new Date(1000 * (Math.round(now.getTime() / 1000) - now.getTimezoneOffset() * 60))
+
+  let state = ledOff;
+  if (now.getHours() >= 9 && now.getHours() <= 17)
+    if (now.getDay() != 0 && now.getDay() != 6)
+      state = ledGreen;
+
   const calendar = google.calendar({ version: 'v3', auth });
 
   // calendar.calendarList.list({}, (err, res) => {
@@ -55,42 +95,61 @@ function listEvents(auth) {
   // })
   // return
 
-  fs.readFile('config.json', (err, content) => {
-    if (err) return console.log('Error loading config file:', err);
-    const config = JSON.parse(content);
+  calendar.events.list({
+    calendarId: calendarid,
+    timeMin: (new Date()).toISOString(),
+    maxResults: 1,
+    singleEvents: true,
+    orderBy: 'startTime',
+  }, (err, res) => {
+    if (err) return console.log('The API returned an error: ' + err);
+    const events = res.data.items;
 
-    calendar.events.list({
-      calendarId: config.calendarId,
-      timeMin: (new Date()).toISOString(),
-      maxResults: 10,
-      singleEvents: true,
-      orderBy: 'startTime',
-    }, (err, res) => {
-      if (err) return console.log('The API returned an error: ' + err);
-      const events = res.data.items;
-      if (events.length) {
-        console.log('Upcoming 10 events:');
-        events.map((event, i) => {
-          const start = event.start.dateTime || event.start.date;
-          console.log(`${start} - ${event.summary}`);
+    if (events && events.length) {
+      const event = events[0];
 
-          if (event.description)
-            console.log(event.description);
+      if (event.start && event.start.dateTime && event.end && event.end.dateTime) {
+        let start = new Date(event.start.dateTime);
+        start = new Date(1000 * (Math.round(start.getTime() / 1000) - start.getTimezoneOffset() * 60))
+        let end = new Date(event.end.dateTime);
+        end = new Date(1000 * (Math.round(end.getTime() / 1000) - end.getTimezoneOffset() * 60))
 
-          // if (event.location)
-          //   console.log(event.location);
+        console.log([start, end, now])
 
-          // if (event.attendees && event.attendees.length)
-          //   for (let attendee of event.attendees)
-          //     if (attendee.email)
-          //       console.log(attendee);
-
-          console.log(event)
-        });
-      } else {
-        console.log('No upcoming events found.');
+        if (start <= now && end >= now)
+          state = ledRed;
+        else {
+          const startdiff5min = new Date(start.getTime() - 5 * 60000)
+          if (startdiff5min <= now)
+            state = ledYellow;
+        }
       }
-    });
+    }
+
+    setLed(state);
+
+    // if (events.length) {
+    //   console.log('Upcoming 10 events:');
+    //   events.map((event, i) => {
+    //     const start = event.start.dateTime || event.start.date;
+    //     console.log(`${start} - ${event.summary}`);
+
+    //     if (event.description)
+    //       console.log(event.description);
+
+    //     // if (event.location)
+    //     //   console.log(event.location);
+
+    //     // if (event.attendees && event.attendees.length)
+    //     //   for (let attendee of event.attendees)
+    //     //     if (attendee.email)
+    //     //       console.log(attendee);
+
+    //     console.log(event)
+    //   });
+    // } else {
+    //   console.log('No upcoming events found.');
+    // }
   });
 }
 
