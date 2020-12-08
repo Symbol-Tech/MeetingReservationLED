@@ -1,6 +1,7 @@
 const fs = require('fs');
 const readline = require('readline');
 const { google } = require('googleapis');
+const gpio = require('rpi-gpio');
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PATH = 'token.json';
@@ -9,6 +10,11 @@ let config = null
 
 try { config = JSON.parse(fs.readFileSync('config.json')) }
 catch (error) { console.log('Error loading config file:', error) }
+
+gpio.setMode('mode_bcm');
+gpio.setup(23, gpio.DIR_OUT); //R
+gpio.setup(24, gpio.DIR_OUT); //G
+gpio.setup(18, gpio.DIR_OUT); //B
 
 fs.readFile('credentials.json', (err, content) => {
   if (err) return console.log('Error loading client secret file:', err);
@@ -65,14 +71,26 @@ function setLed(state) {
   switch (state) {
     case ledGreen:
       console.log("Led state: GREEN");
+      gpio.write(23, false);
+      gpio.write(24, true);
+      gpio.write(18, false);
       break;
     case ledYellow:
       console.log("Led state: YELLOW");
+      gpio.write(23, true);
+      gpio.write(24, true);
+      gpio.write(18, false);
       break;
     case ledRed:
       console.log("Led state: RED");
+      gpio.write(23, true);
+      gpio.write(24, false);
+      gpio.write(18, false);
       break;
     default:
+      gpio.write(23, false);
+      gpio.write(24, false);
+      gpio.write(18, false);
       console.log("Led state: OFF");
       break;
   }
