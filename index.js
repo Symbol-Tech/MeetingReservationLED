@@ -98,12 +98,12 @@ function setLed(state) {
 
 function processEvents(auth, calendarid) {
   let now = new Date()
-  now = new Date(1000 * (Math.round(now.getTime() / 1000) - now.getTimezoneOffset() * 60))
+  //now = new Date(1000 * (Math.round(now.getTime() / 1000) - now.getTimezoneOffset() * 60))
 
   console.log([now, now.getHours()])
 
   let state = ledOff;
-  if (now.getHours() >= 9 && now.getHours() <= 17)
+  if (now.getHours() >= 9 && now.getHours() <= 16)
     if (now.getDay() != 0 && now.getDay() != 6)
       state = ledGreen;
 
@@ -130,16 +130,16 @@ function processEvents(auth, calendarid) {
 
       if (event.start && event.start.dateTime && event.end && event.end.dateTime) {
         let start = new Date(event.start.dateTime);
-        start = new Date(1000 * (Math.round(start.getTime() / 1000) - start.getTimezoneOffset() * 60))
+        //start = new Date(1000 * (Math.round(start.getTime() / 1000) - start.getTimezoneOffset() * 60))
         let end = new Date(event.end.dateTime);
-        end = new Date(1000 * (Math.round(end.getTime() / 1000) - end.getTimezoneOffset() * 60))
+        //end = new Date(1000 * (Math.round(end.getTime() / 1000) - end.getTimezoneOffset() * 60))
 
         console.log([start, end, now])
 
         if (start <= now && end >= now)
           state = ledRed;
         else {
-          const startdiff5min = new Date(start.getTime() - 5 * 60000)
+          const startdiff5min = new Date(start.getTime() - 5 * 60 * 1000)
           if (startdiff5min <= now)
             state = ledYellow;
         }
