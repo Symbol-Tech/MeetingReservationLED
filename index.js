@@ -100,6 +100,8 @@ function processEvents(auth, calendarid) {
   let now = new Date()
   now = new Date(1000 * (Math.round(now.getTime() / 1000) - now.getTimezoneOffset() * 60))
 
+  console.log([now, now.getHours()])
+
   let state = ledOff;
   if (now.getHours() >= 9 && now.getHours() <= 17)
     if (now.getDay() != 0 && now.getDay() != 6)
